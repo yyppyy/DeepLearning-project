@@ -1,0 +1,3 @@
+[submodule "Chinese-Landscape-Painting-Dataset"]
+	path = Chinese-Landscape-Painting-Dataset
+	url = https://github.com/alicex2020/Chinese-Landscape-Painting-Dataset.git
