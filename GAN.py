@@ -39,14 +39,10 @@ class Generator(nn.Module):
         nn.LeakyReLU(0.2)
     )
     self.hidden_layer2 = nn.Sequential(
-        nn.Linear(256, 512),
+        nn.Linear(256, 1024),
         nn.LeakyReLU(0.2)
     )
     self.hidden_layer3 = nn.Sequential(
-        nn.Linear(512, 1024),
-        nn.LeakyReLU(0.2)
-    )
-    self.hidden_layer4 = nn.Sequential(
         nn.Linear(1024, output_dim),
         nn.Tanh()
     )
@@ -55,7 +51,6 @@ class Generator(nn.Module):
       output = self.hidden_layer1(x)
       output = self.hidden_layer2(output)
       output = self.hidden_layer3(output)
-      output = self.hidden_layer4(output)
       return output.to(device)
 
 class Discriminator(nn.Module):
@@ -67,20 +62,12 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Dropout(0.3)
         )
-
         self.hidden_layer2 = nn.Sequential(
-            nn.Linear(1024, 512),
+            nn.Linear(1024, 256),
             nn.LeakyReLU(0.2),
             nn.Dropout(0.3)
         )
-
         self.hidden_layer3 = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.3)
-        )
-
-        self.hidden_layer4 = nn.Sequential(
             nn.Linear(256, output_dim),
             nn.Sigmoid()
         )
@@ -89,7 +76,6 @@ class Discriminator(nn.Module):
         output = self.hidden_layer1(x)
         output = self.hidden_layer2(output)
         output = self.hidden_layer3(output)
-        output = self.hidden_layer4(output)
         return output.to(device)
 
 
@@ -140,7 +126,6 @@ def train_discriminator(batch_size, images): # labels to be used in 5.4.
     # TODO: And this function should perform a single training step on the discriminator
     # generator.eval()
     # discriminator.train()
-    print(images.size())
     discriminator_optimizer.zero_grad()
     noise = torch.randn(batch_size,training_parameters["noise_size"]).to(device)
     fake = generator(noise).detach()
@@ -166,8 +151,10 @@ for epoch in range(training_parameters['n_epochs']):
         lossD = train_discriminator(batch_size, imgs)
         # lossD = train_discriminator(batch_size, imgs)
         D_loss.append(lossD)
+        print("epoch: %d, batch: %d, G loss: %f, D loss: %f" % (epoch, batch, lossG, lossD))
 
-        if ((batch + 1) % 500 == 0 and (epoch + 1) % 1 == 0):
+        if (batch == 67 and (epoch + 1) % 1 == 0):
+            # print("epoch: %d G loss: %f, D loss: %f", epoch, lossG, lossD)
             # Display a batch of generated images and print the loss
             print("Training Steps Completed: ", batch)
             with torch.no_grad():  # disables gradient computation to speed things up
