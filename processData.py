@@ -14,7 +14,9 @@ def get_data_loader(img_size=512, batch_size=32):
     # define a transform to 1) scale the images and 2) convert them into tensors
     transform = transforms.Compose([
         transforms.Resize(img_size), # scales the smaller edge of the image to have this size
+        transforms.Grayscale(num_output_channels=1),
         transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,)),
     ])
 
     dataset = datasets.ImageFolder('./Chinese-Landscape-Painting-Dataset/All-Paintings', transform=transform)

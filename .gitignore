@@ -1,2 +1,4 @@
 __pycache__
 .GS_Store
+results/
+results_BCEWithLogitsLoss/

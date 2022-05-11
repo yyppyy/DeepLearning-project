@@ -13,9 +13,9 @@ from processData import get_data_loader
 
 # loading the dataset
 training_parameters = {
-    "noise_size": 512,
+    "noise_size": 100,
     "img_size": 512,
-    "n_epochs": 24,
+    "n_epochs": 1000,
     "batch_size": 32,
     "learning_rate_generator": 0.0002,
     "learning_rate_discriminator": 0.0002,
@@ -79,14 +79,14 @@ class Discriminator(nn.Module):
         return output.to(device)
 
 
-discriminator = Discriminator(3 * training_parameters["img_size"] ** 2,1).to(device) # initialize both models, and load them to the GPU or CPU.
-generator = Generator(training_parameters["noise_size"], 3 * training_parameters["img_size"] ** 2).to(device)
+discriminator = Discriminator(1 * training_parameters["img_size"] ** 2,1).to(device) # initialize both models, and load them to the GPU or CPU.
+generator = Generator(training_parameters["noise_size"], 1 * training_parameters["img_size"] ** 2).to(device)
 
 discriminator_optimizer = optim.Adam(discriminator.parameters(), lr=training_parameters['learning_rate_discriminator'])
 generator_optimizer = optim.Adam(generator.parameters(), lr=training_parameters['learning_rate_generator'])
 
 # TODO: Implement the GAN training procedure.
-lossFunc = nn.BCELoss()
+lossFunc = nn.BCEWithLogitsLoss()
 def train_generator(batch_size):
     """
     Performs a training step on the generator by
@@ -104,9 +104,9 @@ def train_generator(batch_size):
     # ...
     # generator.train()
     # discriminator.eval()
-    generated = generator(noise)
-    pred = discriminator(generated)
-    loss = lossFunc(pred, torch.ones(batch_size, 1))
+    generated = generator(noise).to(device)
+    pred = discriminator(generated).to(device)
+    loss = lossFunc(pred, torch.ones(batch_size, 1).to(device))
     loss.backward()
     generator_optimizer.step()
     return loss
@@ -128,18 +128,19 @@ def train_discriminator(batch_size, images): # labels to be used in 5.4.
     # discriminator.train()
     discriminator_optimizer.zero_grad()
     noise = torch.randn(batch_size,training_parameters["noise_size"]).to(device)
-    fake = generator(noise).detach()
-    fake_pred = discriminator(fake)
-    loss_fake = 0.5 * lossFunc(fake_pred, torch.zeros(batch_size, 1))
+    fake = generator(noise).detach().to(device)
+    fake_pred = discriminator(fake).to(device)
+    loss_fake = 0.5 * lossFunc(fake_pred, torch.zeros(batch_size, 1).to(device))
     loss_fake.backward()
-    real_pred = discriminator(images.reshape(-1, 3 * training_parameters["img_size"] ** 2))
-    loss_real = 0.5 * lossFunc(real_pred, torch.ones(batch_size, 1))
+    real_pred = discriminator(images.reshape(-1, 1 * training_parameters["img_size"] ** 2)).to(device)
+    loss_real = 0.5 * lossFunc(real_pred, torch.ones(batch_size, 1).to(device))
     loss_real.backward()
     discriminator_optimizer.step()
 
     return loss_fake + loss_real
 
-
+lossFile = open("./results/loss", "w")
+fig, ax = plt.subplots(1, 1)
 for epoch in range(training_parameters['n_epochs']):
     G_loss = []  # for plotting the losses over time
     D_loss = []
@@ -152,24 +153,38 @@ for epoch in range(training_parameters['n_epochs']):
         # lossD = train_discriminator(batch_size, imgs)
         D_loss.append(lossD)
         print("epoch: %d, batch: %d, G loss: %f, D loss: %f" % (epoch, batch, lossG, lossD))
+        print("%d %d %f %f" % (epoch, batch, lossG, lossD), file=lossFile)
+        lossFile.flush()
 
-        if (batch == 67 and (epoch + 1) % 1 == 0):
+        if (batch == 68 and (epoch + 1) % 50 == 0):
             # print("epoch: %d G loss: %f, D loss: %f", epoch, lossG, lossD)
             # Display a batch of generated images and print the loss
             print("Training Steps Completed: ", batch)
             with torch.no_grad():  # disables gradient computation to speed things up
-                noise = torch.randn(batch_size, training_parameters["noise_size"]).to(device)
-                fake_labels = torch.randint(0, 10, (batch_size,)).to(device)
-                generated_data = generator(noise).cpu().view(batch_size, 3, training_parameters["img_size"], training_parameters["img_size"])
-
+                noise = torch.randn(128, training_parameters["noise_size"]).to(device)
+                # fake_labels = torch.randint(0, 10, (128,)).to(device)
+                generated_data = generator(noise).cpu().view(128, 1, training_parameters["img_size"], training_parameters["img_size"])
                 # display generated images
+                '''
                 batch_sqrt = int(training_parameters['batch_size'] ** 0.5)
-                fig, ax = plt.subplots(batch_sqrt, batch_sqrt, figsize=(15, 15))
+                '''
+                '''
                 for i, x in enumerate(generated_data):
-                    ax[math.floor(i / batch_sqrt)][i % batch_sqrt].imshow(x.detach().numpy(), interpolation='nearest', cmap='gray')
-                    ax[math.floor(i / batch_sqrt)][i % batch_sqrt].get_xaxis().set_visible(False)
-                    ax[math.floor(i / batch_sqrt)][i % batch_sqrt].get_yaxis().set_visible(False)
+                    # fig = plt.plot()
+                    print(x.shape)
+                    plt.imsave(f"./results/Epoch_{epoch}_{i}.jpg", x.detach().permute(1, 2, 0).numpy(), cmap='gray')
+                    # plt.imsave(f"./results/Epoch_{epoch}_{i}.jpg", x.detach().numpy(), cmap='gray')
+                '''
+                for i, x in enumerate(generated_data):
+                    ax.imshow(x.detach().permute(1, 2, 0).numpy(), interpolation='nearest', cmap='gray')
+                    ax.get_xaxis().set_visible(False)
+                    ax.get_yaxis().set_visible(False)
+                    fig.savefig(f"./results/Epoch_{epoch}_{i}")
+                    plt.cla()
                 # plt.show()
-                fig.savefig(f"./results/CGAN_Generations_Epoch_{epoch}")
+                # fig.savefig(f"./results/Epoch_{epoch}_{i}")
+                '''
                 print(
                     f"Epoch {epoch}: loss_d: {torch.mean(torch.FloatTensor(D_loss))}, loss_g: {torch.mean(torch.FloatTensor(G_loss))}")
+                '''
+lossFile.close()
